@@ -159,3 +159,46 @@ test('forwarder quotes: validity, WRS cap, 40/20 and reefer checks, lane median,
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('alternative routes: status with date/source, cost to border per mode, chargeable weight, closed routes excluded', opts, async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(S.base + '/', { waitUntil: 'load', timeout: 120000 });
+  await page.waitForFunction(() => window.IFA && window.IFA.market, null, { timeout: 60000 });
+  const r = await page.evaluate(() => {
+    const before = IFA.market.routes();
+    const a = IFA.market.compareRoutes({ eq: '40HC', kg: 3000, cbm: 30, cargo: 50000, ins: 0.2 });
+    const ok = IFA.market.setRouteStatus('rail_srk', 'closed', 'test');
+    const b = IFA.market.compareRoutes({ eq: '20', kg: 12000, cbm: 20 });
+    IFA.market.open('alt');
+    return { before, a, ok, b, after: IFA.market.routes(), html: document.querySelector('.sx-body')?.innerText || '' };
+  });
+  const ids = ['sea', 'rail_srk', 'rail_inc', 'road_baz', 'casp_anz', 'casp_amd', 'air_ika'];
+  assert.deepEqual(r.before.map((x) => x.id), ids);
+  assert.ok(r.before.every((x) => ['open', 'lim', 'closed'].includes(x.status) && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && /^https:/.test(x.source)), 'each route has status, date and source');
+  assert.equal(r.before.find((x) => x.id === 'sea').status, 'closed');
+  assert.equal(r.a.currency, 'USD');
+  assert.equal(r.a.scope, 'to-iran-border');
+  assert.equal(r.a.chargeableKg, 5000, 'air chargeable = max(3000 kg, 30 m³ × 166.7)');
+  for (const x of r.a.routes) {
+    assert.ok(x.total > 0 && x.low < x.total && x.total < x.high, x.id);
+    assert.ok(Math.abs(x.total - x.breakdown.reduce((s, b) => s + b.usd, 0)) <= x.breakdown.length, 'total = sum of lines ' + x.id);
+    assert.ok(x.breakdown.every((b) => b.source && !/ریال/.test(b.item)), 'source tag on every line ' + x.id);
+    assert.ok(x.days[0] <= x.days[1]);
+  }
+  const g = (X, id) => X.routes.find((x) => x.id === id);
+  assert.ok(g(r.a, 'air_ika').breakdown.some((b) => b.usd === Math.round(5000 * 5.75)));
+  assert.notEqual(r.a.cheapest, 'sea', 'closed sea route is never recommended');
+  assert.equal(r.a.fastest, 'air_ika');
+  assert.ok(g(r.a, 'rail_srk').breakdown.some((b) => /بیمه/.test(b.item)), 'insurance on value');
+  assert.ok(r.ok);
+  assert.equal(g(r.b, 'rail_srk').status, 'closed');
+  assert.equal(r.after.find((x) => x.id === 'rail_srk').manual, true);
+  assert.ok(g(r.b, 'rail_srk').total < g(r.a, 'rail_srk').total, '20ft rail cheaper than 40HC');
+  assert.match(r.html, /وضعیت مسیرها/);
+  assert.match(r.html, /مقایسهٔ مسیرها برای این محموله/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

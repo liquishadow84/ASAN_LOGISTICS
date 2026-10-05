@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.5.0 — alternative routes to the Iranian border + route status · phase 3
+- New market sub-tab «مسیرهای جایگزین و وضعیت» (existing components only, design fingerprint unchanged).
+- **Route status** (باز / محدود / بسته) with date, note and source link for: sea south (closed — US blockade from 13 Apr 2026,
+  Iran: Hormuz closed, 4 Oct 2026), rail China → Sarakhs and → Incheh Borun (open — Xi'an–Tehran train every 3–4 days, ~50 FEU),
+  road Istanbul → Gürbulak/Bazargan (limited — truck queues, 22 Sep 2026), Caspian Astrakhan → Anzali / Amirabad (open — +68 % in 4M 2026),
+  air China → IKA (limited — Tehran FIR partially open). Manual override is stored with today's date (`ifa-mkt-route`) and emits `route.status`.
+- **Cost to the border, USD only, per mode**, every line source-tagged:
+  rail — CR Express full-load origin-to-border rate by Chinese origin (Xi'an 4,200 · Chengdu/Chongqing 4,800–5,500 · Shanghai 5,000–6,000 $/TEU),
+  ×1.6 for 40', optional PSS; road — FTL Istanbul → Tehran 2,500–3,500 $ minus the Iranian leg Bazargan → Tehran, TIR carnet,
+  border waiting days; Caspian — Astrakhan → Amirabad 1,825 $/container + port + optional pre-carriage; air — chargeable weight
+  max(kg, m³ × 1,000,000 / 6,000) × 5–6.5 $/kg; sea — the existing Iran estimate; cargo insurance on 110 % CIF for all modes.
+- **Comparison for one shipment**: cost, range, $/kg, transit days, risk (status + mode), cheapest and fastest non-closed route; CSV export.
+- Editable parameters (`ifa-mkt-alt`), shipment weight/volume; container, cargo value and insurance rate shared with the estimator.
+- API: `IFA.market.routes()`, `IFA.market.setRouteStatus(id, status, note)`, `IFA.market.compareRoutes({eq, kg, cbm, cargo, ins, params})`.
+- e2e test for statuses, per-mode totals, chargeable weight and closed-route exclusion.
+
 ## 1.4.0 — forwarder quotes: validation, lane median, like-for-like benchmark · phase 2 (part A)
 - Quote form «ثبت پیشنهاد برای مقایسه» adds: valid-until date, WRS stated in the quote, transit days and «شامل THC مبدأ».
   Rate-bank sea rates bring their own `to` (validity) and `tt` (transit time).
