@@ -123,3 +123,39 @@ test('Incoterms split buyer/seller share, lane uses UN/LOCODE, origin THC is per
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('forwarder quotes: validity, WRS cap, 40/20 and reefer checks, lane median, like-for-like THC', opts, async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(S.base + '/', { waitUntil: 'load', timeout: 120000 });
+  await page.waitForFunction(() => window.IFA && window.IFA.market, null, { timeout: 60000 });
+  const r = await page.evaluate(() => {
+    const t = new Date().toISOString().slice(0, 10);
+    const add = (d) => new Date(Date.now() + d * 864e5).toISOString().slice(0, 10);
+    const base = { pol: 'Shanghai', pod: 'Bandar Abbas', cur: 'USD', date: t, to: add(10) };
+    localStorage.setItem('ifa-mkt-q', JSON.stringify([
+      { ...base, id: 'a20', vendor: 'A', eq: '20', amt: 5000 },
+      { ...base, id: 'a40', vendor: 'A', eq: '40HC', amt: 5200 },
+      { ...base, id: 'arf', vendor: 'A', eq: '40RF', amt: 5000, wrs: 3500 },
+      { ...base, id: 'b40', vendor: 'B', eq: '40HC', amt: 8000, thc: true },
+      { ...base, id: 'c40', vendor: 'C', eq: '40HC', amt: 9000 },
+      { ...base, id: 'old', vendor: 'D', eq: '40HC', amt: 7000, to: add(-3) },
+    ]));
+    return { q: IFA.market.quotes(), l: IFA.market.laneStats() };
+  });
+  const q = Object.fromEntries(r.q.filter((x) => x.id.startsWith('mq:')).map((x) => [x.id.slice(3), x]));
+  const has = (id, re) => q[id].checks.some((c) => re.test(c.text));
+  assert.equal(q.a40.lane, 'CNSHA→IRBND');
+  assert.ok(has('a40', /۴۰\/۲۰/), '40/20 ratio flagged');
+  assert.ok(has('arf', /WRS/) && has('arf', /یخچالی/), 'reefer WRS over cap and cheaper than dry');
+  assert.ok(has('old', /منقضی/) && q.old.live === false);
+  assert.ok(q.b40.includesOriginThc && q.b40.market > q.c40.market, 'benchmark adds origin THC only when quoted');
+  const hc = r.l.find((x) => x.lane === 'CNSHA→IRBND' && x.eq === '40HC');
+  assert.equal(hc.count, 3, 'expired quote excluded');
+  assert.equal(hc.median, 8000);
+  assert.equal(hc.enough, true);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

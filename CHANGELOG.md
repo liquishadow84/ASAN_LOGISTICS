@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 — forwarder quotes: validation, lane median, like-for-like benchmark · phase 2 (part A)
+- Quote form «ثبت پیشنهاد برای مقایسه» adds: valid-until date, WRS stated in the quote, transit days and «شامل THC مبدأ».
+  Rate-bank sea rates bring their own `to` (validity) and `tt` (transit time).
+- Like-for-like benchmark: the Iran market estimate excludes origin THC unless the quote includes it.
+- Automatic checks per quote (column «کنترل‌ها»): expired validity · older than 14 days without validity · WRS above the
+  Iranian cap notice · 40'/20' ratio outside 1.2–2.0 for the same vendor and lane · reefer cheaper than dry · below market (< −15 %).
+- New card «میانهٔ پیشنهادهای معتبر به تفکیک مسیر»: count, min, median, max, spread and today's market benchmark per
+  UN/LOCODE lane and container; flagged when fewer than 3 live quotes. KPI «نیازمند بررسی» replaces «زیر بازار».
+- CSV export adds lane, validity, transit, THC scope, WRS and checks.
+- `IFA.market.quotes()` and `IFA.market.laneStats()`; `benchmark()` returns `lane` and `checks`.
+- e2e test for the checks, lane median and THC scope.
+
 ## 1.3.1 — Incoterms, UN/LOCODE lanes, per-port origin THC · phase 1 (part B)
 - New selector «شرط تحویل خرید (Incoterms 2020)»: EXW · FCA · FOB · CFR · CIF. Every line is grouped (origin / freight / insurance)
   and marked buyer or seller; seller-paid lines stay visible with «در قیمت فروشنده». New KPI «سهم خریدار تا مرز».
