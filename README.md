@@ -74,7 +74,8 @@ DOMAIN=atlas.example.ir IFA_TRUST_PROXY=1 IFA_PUBLIC_URL=https://atlas.example.i
 app/
   index.template.html     پوستهٔ HTML با نشانگرهای <!--@include ...-->
   src/                    محتوای برنامه (CSS، موتور نقشه و مسیر، استودیو، قالب اسناد، …) — فایل‌های بزرگ در قطعه‌های .partNN
-  UI_SHA256               اثرانگشت رابط کاربری (ضمانت عدم تغییر طراحی)
+  UI_SHA256               اثرانگشت کل برنامهٔ مونتاژشده (هر تغییر کد باید آگاهانه ثبت شود)
+  DESIGN_SHA256           اثرانگشت طراحی (markup قالب + CSS) — ضمانت عدم تغییر ظاهر
 scripts/build.mjs         ساخت dist/index.html + تزریق server.js و README داخل برنامه
 server/server.js          سرور تیمی (node:http + node:sqlite، بدون وابستگی)
 server/README.md          راهنمای سرور (همان راهنمایی که از داخل برنامه دانلود می‌شود)

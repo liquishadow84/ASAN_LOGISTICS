@@ -19,6 +19,15 @@ test('build: UI fingerprint unchanged and embedded server equals server/server.j
   assert.equal(r.uiHash, fs.readFileSync(path.join(ROOT, 'app', 'UI_SHA256'), 'utf8').trim());
 });
 
+test('design guard: markup and stylesheet unchanged; border-cost module is USD-only', () => {
+  const r = build({ write: false });
+  assert.equal(r.designHash, fs.readFileSync(path.join(ROOT, 'app', 'DESIGN_SHA256'), 'utf8').trim());
+  const html = fs.readFileSync(path.join(ROOT, 'dist', 'index.html'), 'utf8');
+  assert.ok(!html.includes('THC و هزینهٔ محلی مقصد (ریالی)'), 'rial destination line removed from the to-border estimate');
+  assert.ok(!html.includes("data-cf=\"fx\""));
+  assert.match(html, /const MKWRS=\{c20:1000,c40:2000,rf:3000/);
+});
+
 test('server delivers the app with compression, ETag and 304 revalidation', async () => {
   const plain = await fetch(S.base + '/', { headers: { 'Accept-Encoding': 'identity' } });
   assert.equal(plain.status, 200);

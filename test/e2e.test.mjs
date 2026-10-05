@@ -49,3 +49,38 @@ test('app boots from the server without JavaScript errors and syncs data two-way
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('import cost to the Iranian border is USD-only, tagged by source and checks the WRS cap', opts, async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(S.base + '/', { waitUntil: 'load', timeout: 120000 });
+  await page.waitForFunction(() => window.IFA && window.IFA.market, null, { timeout: 60000 });
+  const r = await page.evaluate(() => ({
+    hc: IFA.market.estimate({ eq: '40HC' }),
+    c20: IFA.market.estimate({ eq: '20' }),
+    rf: IFA.market.estimate({ eq: '40RF', params: { cargo: 100000, ins: 0.2, insWar: 0.3 } }),
+    over: IFA.market.estimate({ eq: '40', params: { wrs40: 2600 } }),
+  }));
+  for (const e of Object.values(r)) {
+    assert.ok(e, 'estimate available (bundled SCFI/FBX series)');
+    assert.equal(e.currency, 'USD');
+    assert.equal(e.scope, 'to-iran-border');
+    assert.ok(e.breakdown.every((b) => !/ریال/.test(b.item) && b.source), 'no rial lines; every line has a source tag');
+    assert.ok(Math.abs(e.total - e.breakdown.reduce((a, b) => a + b.usd, 0)) <= e.breakdown.length, 'total = sum of rounded lines');
+    assert.ok(e.low < e.total && e.total < e.high);
+  }
+  const wrs = (e) => e.breakdown.find((b) => /WRS/.test(b.item));
+  assert.equal(wrs(r.hc).usd, 2000);
+  assert.equal(wrs(r.c20).usd, 1000);
+  assert.equal(wrs(r.rf).usd, 3000);
+  assert.match(wrs(r.over).basis, /بیش از سقف/);
+  assert.equal(r.hc.cif, null);
+  const ins = r.rf.breakdown.find((b) => /بیمه/.test(b.item));
+  assert.ok(ins && ins.usd > 0);
+  // CIF = (FOB + freight) / (1 - 1.1 × rate)
+  assert.ok(Math.abs(r.rf.cif - (100000 + r.rf.freight) / (1 - 1.1 * 0.005)) <= 2, `cif ${r.rf.cif}`);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

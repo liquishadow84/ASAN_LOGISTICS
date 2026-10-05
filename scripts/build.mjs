@@ -6,6 +6,8 @@
  *   server/README.md, so the in-app “download server.js” button always ships the server in this repository.
  * - The UI fingerprint (hash of the assembled app with placeholders unresolved) is compared with app/UI_SHA256
  *   to guarantee that the user interface is byte-identical to the original design.
+ * - The design fingerprint (template markup + styles.css) is compared with app/DESIGN_SHA256: logic may evolve,
+ *   but the visual design must not change.
  * Flags: --check (verify only, do not write)  --update-fingerprint (rewrite app/UI_SHA256 intentionally)
  */
 import fs from 'node:fs';
@@ -40,6 +42,11 @@ export function build({ write = true, updateFingerprint = false } = {}) {
   if (expected && expected !== uiHash) {
     throw new Error(`UI fingerprint mismatch\n  expected ${expected}\n  actual   ${uiHash}\nThe app sources changed. If intentional, run: npm run build -- --update-fingerprint`);
   }
+  // Visual design guard: page markup (template) + stylesheet must stay byte-identical to the original design.
+  const designHash = sha(Buffer.from(fs.readFileSync(path.join(ROOT, 'app', 'index.template.html'), 'utf8') + '\n/*css*/\n' + readInclude('styles.css'), 'utf8'));
+  const dFile = path.join(ROOT, 'app', 'DESIGN_SHA256');
+  const dExp = fs.existsSync(dFile) ? fs.readFileSync(dFile, 'utf8').trim() : null;
+  if (dExp && dExp !== designHash) throw new Error(`Design fingerprint mismatch (markup/CSS changed)\n  expected ${dExp}\n  actual   ${designHash}`);
   const b64 = (f) => fs.readFileSync(path.join(ROOT, f)).toString('base64');
   for (const ph of ['__IFA_SERVER_JS_B64__', '__IFA_SERVER_README_B64__'])
     if (ui.split(ph).length !== 2) throw new Error('placeholder must appear exactly once: ' + ph);
@@ -51,7 +58,7 @@ export function build({ write = true, updateFingerprint = false } = {}) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, html);
   }
-  return { out, bytes: Buffer.byteLength(html), uiHash, sha256: sha(Buffer.from(html, 'utf8')) };
+  return { out, bytes: Buffer.byteLength(html), uiHash, designHash, sha256: sha(Buffer.from(html, 'utf8')) };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
