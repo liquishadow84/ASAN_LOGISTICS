@@ -1,0 +1,46 @@
+# Run:            docker compose up -d --build            → http://localhost:8080
+# With HTTPS:     DOMAIN=atlas.example.ir docker compose --profile https up -d --build
+# Admin password: on first start it is printed in `docker compose logs ifa` and saved to /data/ADMIN_PASSWORD.txt
+services:
+  ifa:
+    build: .
+    image: asana-logistics:latest
+    restart: unless-stopped
+    ports:
+      - "${IFA_BIND:-8080}:8080"
+    environment:
+      IFA_ADMIN_PASS: ${IFA_ADMIN_PASS:-}
+      IFA_PUBLIC_URL: ${IFA_PUBLIC_URL:-}
+      IFA_TRUST_PROXY: ${IFA_TRUST_PROXY:-0}
+      IFA_MARKET: ${IFA_MARKET:-1}
+      IFA_EIA_KEY: ${IFA_EIA_KEY:-}
+      IFA_BALE_TOKEN: ${IFA_BALE_TOKEN:-}
+      IFA_TELEGRAM_TOKEN: ${IFA_TELEGRAM_TOKEN:-}
+      IFA_KAVENEGAR_KEY: ${IFA_KAVENEGAR_KEY:-}
+      IFA_KAVENEGAR_SENDER: ${IFA_KAVENEGAR_SENDER:-}
+      IFA_WEBHOOK_URL: ${IFA_WEBHOOK_URL:-}
+      IFA_WEBHOOK_SECRET: ${IFA_WEBHOOK_SECRET:-}
+      IFA_DCSA_URL: ${IFA_DCSA_URL:-}
+      IFA_DCSA_KEY: ${IFA_DCSA_KEY:-}
+    volumes:
+      - ifa-data:/data
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    restart: unless-stopped
+    depends_on: [ifa]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  ifa-data:
+  caddy-data:
+  caddy-config:

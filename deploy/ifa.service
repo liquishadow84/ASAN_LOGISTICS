@@ -1,0 +1,20 @@
+# /etc/systemd/system/ifa.service  →  sudo systemctl daemon-reload && sudo systemctl enable --now ifa
+[Unit]
+Description=Asana Logistics Team Server
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/ifa
+ExecStart=/usr/bin/node --experimental-sqlite --no-warnings /opt/ifa/server/server.js
+Restart=always
+User=ifa
+Environment=NODE_ENV=production
+Environment=IFA_DATA=/var/lib/ifa
+Environment=IFA_CONFIG=/etc/ifa/config.json
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+ReadWritePaths=/var/lib/ifa
+
+[Install]
+WantedBy=multi-user.target

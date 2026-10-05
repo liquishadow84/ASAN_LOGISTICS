@@ -1,0 +1,20 @@
+{
+  "name": "asana-logistics",
+  "version": "1.2.0",
+  "description": "سامانه لجستیک آسانا — برنامهٔ تک‌فایلی وب + سرور تیمی (Node.js + SQLite) برای مسیریابی، قیمت‌گذاری و مدیریت عملیات حمل‌ونقل بین‌المللی",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check",
+    "start": "node scripts/build.mjs && node --experimental-sqlite --no-warnings server/server.js",
+    "serve": "node --experimental-sqlite --no-warnings server/server.js",
+    "reset-admin": "node --experimental-sqlite --no-warnings server/server.js --reset-admin",
+    "test": "node --experimental-sqlite --no-warnings --test --test-concurrency=1 test/api.test.mjs test/security.test.mjs test/app.test.mjs",
+    "test:e2e": "node --experimental-sqlite --no-warnings --test test/e2e.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0"
+  }
+}

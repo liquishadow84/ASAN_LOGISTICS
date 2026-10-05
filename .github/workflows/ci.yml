@@ -1,0 +1,45 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Build & verify UI fingerprint
+        run: node scripts/build.mjs
+      - name: API, security and delivery tests
+        run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Browser end-to-end (app ↔ server sync)
+        run: npm run test:e2e
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t asana-logistics:ci .
+      - name: Smoke test container
+        run: |
+          docker run -d --name ifa -p 8080:8080 -e IFA_ADMIN_PASS=ci-admin-pass-123 -e IFA_MARKET=0 asana-logistics:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/api/health && break; sleep 1; done
+          curl -fsS -o /dev/null -w 'app: %{http_code} %{size_download} bytes\n' http://127.0.0.1:8080/
+          curl -fsS -X POST http://127.0.0.1:8080/api/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"ci-admin-pass-123"}' | grep -q token
+          docker logs ifa

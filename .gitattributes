@@ -1,0 +1,4 @@
+* text=auto eol=lf
+# The app sources are assembled byte-for-byte; never convert line endings or diff them.
+app/** -text -diff linguist-generated=true
+*.bat text eol=crlf

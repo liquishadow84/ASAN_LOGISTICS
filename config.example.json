@@ -1,0 +1,19 @@
+{
+  "port": 8080,
+  "host": "0.0.0.0",
+  "dataDir": "./data",
+  "publicUrl": "https://atlas.example.ir",
+  "appFile": "",
+  "cors": "*",
+  "trustProxy": false,
+  "tokenHours": 12,
+  "maxUploadMB": 25,
+  "bale": { "token": "" },
+  "telegram": { "token": "" },
+  "kavenegar": { "apiKey": "", "sender": "" },
+  "webhook": { "url": "", "secret": "" },
+  "dcsa": { "baseUrl": "", "apiKey": "", "header": "API-Key" },
+  "moadian": { "submitUrl": "", "authHeader": "", "privateKeyFile": "" },
+  "scheduler": { "rateDays": 3, "overdueHours": 24, "everyMin": 10 },
+  "market": { "enabled": true, "everyHours": 0, "eiaKey": "", "scfiCookie": "", "keepRaw": true, "rawDays": 60, "sources": { "tgju": true, "bonbast": true } }
+}
