@@ -79,8 +79,47 @@ test('import cost to the Iranian border is USD-only, tagged by source and checks
   assert.equal(r.hc.cif, null);
   const ins = r.rf.breakdown.find((b) => /بیمه/.test(b.item));
   assert.ok(ins && ins.usd > 0);
-  // CIF = (FOB + freight) / (1 - 1.1 × rate)
-  assert.ok(Math.abs(r.rf.cif - (100000 + r.rf.freight) / (1 - 1.1 * 0.005)) <= 2, `cif ${r.rf.cif}`);
+  // FOB invoice: CIF = (FOB value + buyer-paid freight lines) / (1 - 1.1 × rate); origin THC is in the seller's price
+  const fLines = r.rf.breakdown.filter((b) => b.group === 'freight').reduce((a, b) => a + b.usd, 0);
+  assert.ok(Math.abs(r.rf.cif - (100000 + fLines) / (1 - 1.1 * 0.005)) <= 3, `cif ${r.rf.cif}`);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('Incoterms split buyer/seller share, lane uses UN/LOCODE, origin THC is per port', opts, async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(S.base + '/', { waitUntil: 'load', timeout: 120000 });
+  await page.waitForFunction(() => window.IFA && window.IFA.market, null, { timeout: 60000 });
+  const r = await page.evaluate(() => {
+    const p = { cargo: 50000, ins: 0.2 };
+    return {
+      exw: IFA.market.estimate({ params: { ...p, inc: 'EXW' } }),
+      fob: IFA.market.estimate({ params: { ...p, inc: 'FOB' } }),
+      cfr: IFA.market.estimate({ params: { ...p, inc: 'CFR' } }),
+      cif: IFA.market.estimate({ params: { ...p, inc: 'CIF' } }),
+      dir: IFA.market.estimate({ pol: 'Ningbo', params: { route: 'dir' } }),
+      thc: IFA.market.estimate({ pol: 'Qingdao', params: { thcPol: { Qingdao: { thcO40: 333 } } } }),
+    };
+  });
+  const sum = (e, f) => e.breakdown.filter(f).reduce((a, b) => a + b.usd, 0);
+  for (const e of Object.values(r)) {
+    assert.ok(e.breakdown.every((b) => ['origin', 'freight', 'insurance'].includes(b.group) && ['buyer', 'seller'].includes(b.payer)));
+    assert.ok(Math.abs(e.buyerShare - sum(e, (b) => b.payer === 'buyer')) <= e.breakdown.length);
+  }
+  assert.equal(r.fob.lane, 'CNSHA→AEJEA→IRBND');
+  assert.equal(r.dir.lane, 'CNNGB→IRBND');
+  assert.equal(r.fob.incoterm, 'FOB');
+  assert.ok(Math.abs(r.exw.buyerShare - r.exw.total) <= r.exw.breakdown.length, 'EXW: buyer pays everything');
+  assert.ok(r.fob.breakdown.filter((b) => b.group === 'origin').every((b) => b.payer === 'seller'), 'FOB: origin THC in seller price');
+  assert.ok(r.cfr.breakdown.every((b) => (b.group === 'insurance') === (b.payer === 'buyer')), 'CFR: buyer pays insurance only');
+  assert.equal(r.cif.cif, 50000, 'CIF invoice: value is CIF');
+  assert.ok(!r.cif.breakdown.some((b) => b.group === 'insurance'));
+  assert.equal(r.cif.buyerShare, 0);
+  assert.ok(r.cif.breakdown.every((b) => /در قیمت فروشنده/.test(b.basis)));
+  assert.equal(r.thc.breakdown.find((b) => b.group === 'origin').usd, 333);
   assert.deepEqual(errors, []);
   await ctx.close();
 });

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.1 — Incoterms, UN/LOCODE lanes, per-port origin THC · phase 1 (part B)
+- New selector «شرط تحویل خرید (Incoterms 2020)»: EXW · FCA · FOB · CFR · CIF. Every line is grouped (origin / freight / insurance)
+  and marked buyer or seller; seller-paid lines stay visible with «در قیمت فروشنده». New KPI «سهم خریدار تا مرز».
+- CIF at the border follows the invoice term: CIF invoice → value is CIF (no insurance line); otherwise value + buyer-paid lines, grossed up for 110 % insurance.
+- Lane shown as UN/LOCODE path, e.g. `CNSHA→AEJEA→IRBND` (transhipment) or `CNNGB→IRBND` (direct).
+- Origin THC is stored **per origin port** (`thcPol`), the form labels it with the port name.
+- `IFA.market.estimate()` adds `lane`, `incoterm`, `buyerShare` and per-line `group` / `payer`; `params.inc` and `params.thcPol` accepted.
+- e2e test for Incoterm splits, lanes and per-port THC.
+
 ## 1.3.0 — import cost to the Iranian border (USD only) · phase 1
 - Market estimator «برآورد نرخ ایران» now covers **only costs up to the Iranian border/port and only in USD**:
   the rial destination-THC line, the rial inputs and the IRR exchange-rate selector were removed from this module.
